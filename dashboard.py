@@ -9,6 +9,7 @@ import json
 from urllib.request import urlopen
 #import ast
 from datetime import date, timedelta
+import plotly.express as px
 
 
 
@@ -58,19 +59,16 @@ def calculate_deltadate(delta):
         delta_r = '{} mois'.format(int(delta_m))
         
     return delta_r
-   
-age_moyenne = 40
-revenu_moyen = 165612
-anciennete_moyenne = -1815
 
 def calculate_info(Dict):
     age = calculate_age(Dict[0]["DAYS_BIRTH"])
     revenu = Dict[0]["AMT_INCOME_TOTAL"]
+    montant_credit = Dict[0]["AMT_CREDIT"]
     anciennete = calculate_anciennete(Dict[0]["DAYS_EMPLOYED"])
-    delta_age = age-40
-    delta_revenu = revenu-165612
+    delta_age = age-45
+    delta_revenu = revenu-170000
     delta_anciennete = Dict[0]["DAYS_EMPLOYED"]-(-1815)
-    return age, revenu, anciennete, delta_age, delta_revenu, delta_anciennete
+    return age, revenu, anciennete, delta_age, delta_revenu, delta_anciennete, montant_credit
     
 
 def main():
@@ -105,12 +103,12 @@ def main():
         
         Dict = json.loads(API_data)
         
-        age, revenu, anciennete, delta_age, delta_revenu, delta_anciennete = calculate_info(Dict)
+        age, revenu, anciennete, delta_age, delta_revenu, delta_anciennete, montant_credit = calculate_info(Dict)
         
 
         
         if Dict[0]["PREDICTION"] <0.51 :
-            st.success('CRÉDIT ACCEPTÉ '+str(Dict[0]["PREDICTION"]))
+            st.success('CRÉDIT ACCEPTÉ, Score: '+str(Dict[0]["PREDICTION"]))
         else :
             st.error('CRÉDIT REFUSÉ')
         
@@ -123,15 +121,45 @@ def main():
         col2.metric("Sexe :", Dict[0]["CODE_GENDER"])
         col3.metric("Status marital :", Dict[0]["NAME_FAMILY_STATUS"])
         
-        st.subheader('Informations Pro :')
+        st.subheader('Informations Profesionnelles :')
         
         col1, col2= st.columns(2)
         
         col1.metric("Revenu :",revenu, delta_revenu)
-        col2.metric("Ancienneté pro :", anciennete, calculate_deltadate(-delta_anciennete))
+        col2.metric("Ancienneté :", anciennete, calculate_deltadate(-delta_anciennete))
+        st.write('Les indicateurs sous les informations Age, Revenu et Ancienneté indique la différence entre le client et la moyenne des clients')
+        st.write('')
+        st.write('')
         
-        
-        
+        tab1, tab2, tab3 = st.tabs(["Montant", "Salaire", "Age"])
+        with tab1:
+            st.write('Le montant de la demande de crédit : ',montant_credit)          
+            fig = px.histogram(data['AMT_CREDIT'])
+            fig.add_vline(x=montant_credit, line_width=5, line_color='red', annotation_text='Le client') 
+            st.plotly_chart(fig, use_container_width=True)
+
+            st.write("Description de l'ensemble des demandes de crédit")
+            df_credit = pd.DataFrame({'Crédit': data['AMT_CREDIT'].describe()})
+            st.table(df_credit)
+
+        with tab2:
+            st.write("Le salaire du client : ",revenu)
+            fig = px.histogram(data['AMT_INCOME_TOTAL'][data['AMT_INCOME_TOTAL']<800000])
+            fig.add_vline(x=revenu, line_width=5, line_color='red', annotation_text='Le client') 
+            st.plotly_chart(fig, use_container_width=True)
+            st.write("Description des salaires de nos clients")
+            df_salaire = pd.DataFrame({'Salaire': data['AMT_INCOME_TOTAL'].describe()})
+            st.table(df_salaire)       
+
+        with tab3:
+            st.write("L'age du client : ",age)
+            df_age = -data['DAYS_BIRTH_x'].apply(calculate_age)
+            fig = px.histogram(df_age)
+            fig.add_vline(x=age, line_width=5, line_color='red', annotation_text='Le client') 
+            st.plotly_chart(fig, use_container_width=True)
+            st.write("Description de l'age de nos clients")
+            df_age = pd.DataFrame({'Age': df_age.describe()})
+            st.table(df_age)  
         
         
 
