@@ -1,27 +1,20 @@
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 import requests
-#from sklearn.preprocessing import MinMaxScaler
-#from sklearn.impute import SimpleImputer
-#from sklearn import preprocessing
 
 import json
 from urllib.request import urlopen
-#import ast
 from datetime import date, timedelta
 import plotly.express as px
-
-
-
+import os
 
 def request_prediction(model_uri, data):
     headers = {"Content-Type": "application/json"}
 
     
-    #st.write(data['SK_ID_CURR'])
     
     st.write(data)
-    #data = data.tolist()
     data_json = {'data': data}
     
     response = requests.request(
@@ -98,10 +91,9 @@ def main():
 
         API_data = json.loads(json_url.read())
         
-        #st.write(API_data)
-        #convertedDict = json.loads(API_data)
         
         Dict = json.loads(API_data)
+        
         
         age, revenu, anciennete, delta_age, delta_revenu, delta_anciennete, montant_credit = calculate_info(Dict)
         
@@ -131,7 +123,7 @@ def main():
         st.write('')
         st.write('')
         
-        tab1, tab2, tab3 = st.tabs(["Montant", "Salaire", "Age"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Montant", "Salaire", "Age", "Interprétabilité"])
         with tab1:
             st.write('Le montant de la demande de crédit : ',montant_credit)          
             fig = px.histogram(data['AMT_CREDIT'])
@@ -159,8 +151,17 @@ def main():
             st.plotly_chart(fig, use_container_width=True)
             st.write("Description de l'age de nos clients")
             df_age = pd.DataFrame({'Age': df_age.describe()})
-            st.table(df_age)  
-        
+            st.table(df_age) 
+           
+        with tab4:
+            st.write("Les 10 Features les plus importantes ainsi que leurs poids dans la décision")
+            Dict_feat = {x:y for x,y in Dict[1].items() if y is not None}
+            Dict_feat = pd.DataFrame.from_dict([list(Dict_feat),Dict_feat.values()]).transpose()
+            Dict_feat = Dict_feat.rename(columns={0: "Variable", 1: "Poids"})
+            fig = px.bar(Dict_feat, x='Variable', y="Poids")
+            st.plotly_chart(fig, use_container_width=True)
+            st.write("Tableau")
+            st.table(Dict_feat)
         
 
 
